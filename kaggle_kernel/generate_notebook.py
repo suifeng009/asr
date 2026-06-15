@@ -223,6 +223,11 @@ for fn in ['train.jsonl', 'val.jsonl']:
             skipped += 1
             continue
 
+        if not rec.get('target', '').strip():
+            print(f"  跳过: {basename} (空文本)")
+            skipped += 1
+            continue
+
         try:
             with sf.SoundFile(rec['source']) as f:
                 duration = f.frames / f.samplerate
@@ -379,7 +384,7 @@ cmd = [
 ]
 
 print(f"命令: {' '.join(cmd)}")
-proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+proc = subprocess.run(cmd, capture_output=True, text=True)
 if proc.stdout: print(proc.stdout[-2000:])
 if proc.stderr: print("STDERR:", proc.stderr[-1000:])
 print(f"Exit code: {proc.returncode}")
