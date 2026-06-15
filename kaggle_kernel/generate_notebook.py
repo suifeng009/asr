@@ -75,7 +75,7 @@ run("pip install funasr==1.3.9 --no-deps -q")
 run("pip install soundfile librosa hydra-core kaldiio modelscope tensorboardX torch_complex -q")
 
 # 5) ONNX
-run("pip install onnx onnxruntime -q")
+run("pip install onnx onnxruntime onnxscript -q")
 
 # ⚠️ 不降级 numpy —— 保持 2.x
 
@@ -361,10 +361,24 @@ avg_dir = None
 for d in sorted(os.listdir(output_dir)):
     if d.startswith('avg_'):
         avg_dir = os.path.join(output_dir, d)
-if not avg_dir:
-    raise FileNotFoundError("未找到 avg 模型目录")
-print(f"模型: {avg_dir}")
-print(f"文件: {os.listdir(avg_dir)}")
+
+if avg_dir:
+    print(f"✅ 找到融合模型: {avg_dir}")
+    print(f"文件: {os.listdir(avg_dir)}")
+    model_dir_for_export = avg_dir
+else:
+    print("⚠️ 未找到 avg 目录，退避使用 best 或最新模型...")
+    best_model = os.path.join(output_dir, 'model.pt.best')
+    if not os.path.exists(best_model):
+        eps = [f for f in os.listdir(output_dir) if f.startswith('model.pt.ep')]
+        if eps:
+            best_model = os.path.join(output_dir, sorted(eps, key=lambda x: int(x.split('.ep')[-1]))[-1])
+        else:
+            raise FileNotFoundError("未找到任何可用模型!")
+    print(f"✅ 使用备选模型文件: {best_model}")
+    # 拷贝为 model.pt 以满足 export 脚本的默认寻找路径
+    shutil.copy2(best_model, os.path.join(output_dir, 'model.pt'))
+    model_dir_for_export = output_dir
 
 export_dir = '/kaggle/working/export'
 
@@ -376,7 +390,7 @@ export_script = r.stdout.strip()
 
 cmd = [
     sys.executable, export_script,
-    f'++model={avg_dir}',
+    f'++model={model_dir_for_export}',
     f'++output_dir={export_dir}',
     '++type=onnx',
     '++quantize=false',
@@ -441,7 +455,11 @@ for d in sorted(os.listdir(output_dir)):
     if d.startswith("avg_"):
         avg_dir = os.path.join(output_dir, d)
 
-state = torch.load(f"{avg_dir}/model.pt", map_location="cpu", weights_only=True)
+model_pt_path = f"{avg_dir}/model.pt" if avg_dir else f"{output_dir}/model.pt"
+if not os.path.exists(model_pt_path):
+    model_pt_path = f"{output_dir}/model.pt.best"
+
+state = torch.load(model_pt_path, map_location="cpu", weights_only=True)
 state_dict = state.get("model_state_dict", state)
 embed = state_dict.get("embed.weight", None)
 is_reduced = embed is not None and embed.shape[0] < 100
@@ -521,11 +539,12 @@ for i, c in enumerate(check['cells']):
     s = c['source']
     assert isinstance(s, str), f"Cell {i} source is {type(s)}!"
     first = s.strip()[:40].replace('\n', ' ')
-    print(f"  Cell {i}: {t:8s} | {len(s):5d} chars | {first}")
+    safe_str = f"  Cell {i}: {t:8s} | {len(s):5d} chars | {first}"
+    print(safe_str.encode('gbk', 'replace').decode('gbk'))
 
 # 确认没有 numpy 降级
 full = json.dumps(check)
 assert 'numpy==' not in full, "仍然包含 numpy 降级！"
 assert 'numpy<2' not in full, "仍然包含 numpy<2！"
-print("\n✅ 无 numpy 降级指令")
-print("✅ 格式验证通过")
+print("\n[OK] 无 numpy 降级指令")
+print("[OK] 格式验证通过")

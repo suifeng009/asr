@@ -1,1 +1,10 @@
 training_data.tar.gz
+kaggle_output/
+kaggle_kernel/outputs/
+kaggle_kernel/export/
+*.onnx
+*.pt
+*.best
+*.log
+__pycache__/
+.ipynb_checkpoints/
