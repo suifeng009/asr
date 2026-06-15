@@ -29,7 +29,7 @@ md("""# SenseVoice V3 微调训练 — Kaggle 版
 | 数据 | `shadiao/asr0001` — 3720 条增强数据 |
 | 预训练模型 | `vinhtrannhat/sensevoice-small-model`（本地挂载） |
 | GPU | P100 16GB / T4 |
-| 训练 | 15 epochs, lr=2e-5, token batch=2000 |
+| 训练 | 20 epochs, lr=2e-5, token batch=1000 |
 | 导出 | ONNX FP32 全精度 |
 
 **设置：** Accelerator → GPU, Internet → ON
@@ -293,11 +293,11 @@ cmd = [
     f'++valid_data_set_list={val_data}',
     '++dataset_conf.data_split_num=1',
     '++dataset_conf.batch_sampler=BatchSampler',
-    '++dataset_conf.batch_size=2000',
+    '++dataset_conf.batch_size=1000',
     '++dataset_conf.sort_size=1024',
     '++dataset_conf.batch_type=token',
     '++dataset_conf.num_workers=4',
-    '++train_conf.max_epoch=15',
+    '++train_conf.max_epoch=20',
     '++train_conf.log_interval=1',
     '++train_conf.resume=true',
     '++train_conf.validate_interval=500',
@@ -306,8 +306,7 @@ cmd = [
     '++train_conf.avg_nbest_model=3',
     '++train_conf.use_deepspeed=false',
     '++optim_conf.lr=0.00002',
-    '++scheduler_conf.warmup_steps=100',    # 关键！原值 25000 是为大数据集设计的
-                                            # 19步/epoch，100步≈5个epoch预热完
+    '++scheduler_conf.warmup_steps=50',
     f'++output_dir={output_dir}',
 ]
 
