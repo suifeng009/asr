@@ -192,16 +192,40 @@ print(f"\n磁盘剩余: {free_mb} MB")
 """)
 
 
-# ===== Cell 3: 修正 JSONL =====
+# ===== Cell 3: 修正 JSONL + 语速扰动 =====
 code(r"""# ============================================================
-# Cell 3: 修正 JSONL 音频路径 + 过滤无效条目
+# Cell 3: 修正 JSONL 音频路径 + 语速扰动扩充 (仅训练集)
 # ============================================================
-import json, os
+import json, os, copy
 import soundfile as sf
+import librosa
+import warnings
+warnings.filterwarnings('ignore')
 
 work_dir = '/kaggle/working/data'
+sp_dir = os.path.join(work_dir, 'sp_audio')
 total_orig = 0
 total_valid = 0
+
+def apply_speed_perturb(rec, factor):
+    src = rec['source']
+    name, ext = os.path.splitext(os.path.basename(src))
+    new_name = f"{name}_sp{factor}{ext}"
+    out_path = os.path.join(sp_dir, new_name)
+    os.makedirs(sp_dir, exist_ok=True)
+    
+    if not os.path.exists(out_path):
+        y, sr = librosa.load(src, sr=None)
+        # 变调变速：重采样
+        # target_sr = sr / factor，保存时以原始 sr 写入
+        # factor=0.9 -> 音频变长，语速变慢
+        y_sp = librosa.resample(y, orig_sr=sr, target_sr=sr / factor)
+        sf.write(out_path, y_sp, sr)
+        
+    new_rec = copy.deepcopy(rec)
+    new_rec['source'] = out_path
+    new_rec['source_len'] = int(rec['source_len'] / factor)
+    return new_rec
 
 for fn in ['train.jsonl', 'val.jsonl']:
     fpath = os.path.join(work_dir, fn)
@@ -214,7 +238,8 @@ for fn in ['train.jsonl', 'val.jsonl']:
     valid = []
     skipped = 0
 
-    for line in lines:
+    print(f"处理 {fn}...")
+    for i, line in enumerate(lines):
         rec = json.loads(line.strip())
         basename = os.path.basename(rec['source'])
         rec['source'] = os.path.join(work_dir, 'augmented_audio', basename)
@@ -238,15 +263,26 @@ for fn in ['train.jsonl', 'val.jsonl']:
             continue
 
         valid.append(rec)
+        
+        # 仅对训练集做语速扰动 (0.9x 和 1.1x)
+        if fn == 'train.jsonl':
+            try:
+                valid.append(apply_speed_perturb(rec, 0.9))
+                valid.append(apply_speed_perturb(rec, 1.1))
+            except Exception as e:
+                print(f"  扰动失败: {basename} ({e})")
+
+        if i % 100 == 0 and i > 0:
+            print(f"  已处理 {i}/{len(lines)} 条原始数据...")
 
     with open(fpath, 'w', encoding='utf-8') as f:
         for rec in valid:
             f.write(json.dumps(rec, ensure_ascii=False) + '\n')
 
     total_valid += len(valid)
-    print(f"✅ {fn}: {len(lines)} → {len(valid)} 条 (过滤 {skipped})")
+    print(f"✅ {fn}: 原始 {len(lines)} 条 → 最终 {len(valid)} 条 (过滤 {skipped})")
 
-print(f"\n总计: {total_orig} → {total_valid} 条")
+print(f"\n总计: 最终共保留 {total_valid} 条数据")
 """)
 
 
