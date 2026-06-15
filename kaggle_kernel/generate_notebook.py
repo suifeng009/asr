@@ -29,7 +29,7 @@ md("""# SenseVoice V3 微调训练 — Kaggle 版
 | 数据 | `shadiao/asr0001` — 3720 条增强数据 |
 | 预训练模型 | `vinhtrannhat/sensevoice-small-model`（本地挂载） |
 | GPU | P100 16GB / T4 |
-| 训练 | 50 epochs, lr=2e-5, token batch=2000 |
+| 训练 | 15 epochs, lr=2e-5, token batch=2000 |
 | 导出 | ONNX FP32 全精度 |
 
 **设置：** Accelerator → GPU, Internet → ON
@@ -297,7 +297,7 @@ cmd = [
     '++dataset_conf.sort_size=1024',
     '++dataset_conf.batch_type=token',
     '++dataset_conf.num_workers=4',
-    '++train_conf.max_epoch=50',
+    '++train_conf.max_epoch=15',
     '++train_conf.log_interval=1',
     '++train_conf.resume=true',
     '++train_conf.validate_interval=500',
