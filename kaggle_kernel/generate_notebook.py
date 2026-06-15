@@ -26,7 +26,7 @@ md("""# SenseVoice V3 微调训练 — Kaggle 版
 
 | 项目 | 值 |
 |------|----|
-| 数据 | `shadiao/asr0001` — 3720 条增强数据 |
+| 数据 | `shadiao/asp800` — 800 条真实数据 |
 | 预训练模型 | `vinhtrannhat/sensevoice-small-model`（本地挂载） |
 | GPU | P100 16GB / T4 |
 | 训练 | 20 epochs, lr=2e-5, token batch=1000 |
@@ -119,7 +119,7 @@ print(f"扫描 {input_root} ...")
 
 data_dir = None
 for root, dirs, files in os.walk(input_root):
-    if 'augmented_audio' in dirs:
+    if 'audio' in dirs:
         data_dir = root
         break
     if 'train.jsonl' in files and 'val.jsonl' in files:
@@ -135,11 +135,11 @@ if not data_dir:
 print(f"✅ 数据目录: {data_dir}")
 
 # ---------- 2.2 Symlink 音频 ----------
-input_audio = os.path.join(data_dir, 'augmented_audio')
-assert os.path.isdir(input_audio), f"augmented_audio 不存在: {input_audio}"
+input_audio = os.path.join(data_dir, 'audio')
+assert os.path.isdir(input_audio), f"audio 不存在: {input_audio}"
 
 work_dir = '/kaggle/working/data'
-work_audio = os.path.join(work_dir, 'augmented_audio')
+work_audio = os.path.join(work_dir, 'audio')
 os.makedirs(work_dir, exist_ok=True)
 if os.path.islink(work_audio):
     os.unlink(work_audio)
@@ -242,7 +242,7 @@ for fn in ['train.jsonl', 'val.jsonl']:
     for i, line in enumerate(lines):
         rec = json.loads(line.strip())
         basename = os.path.basename(rec['source'])
-        rec['source'] = os.path.join(work_dir, 'augmented_audio', basename)
+        rec['source'] = os.path.join(work_dir, 'audio', basename)
 
         if not os.path.exists(rec['source']):
             skipped += 1
@@ -583,7 +583,8 @@ md("""## ✅ 完成！
 
 
 # ===== 保存 + 验证 =====
-out_path = r'C:\asr\kaggle_kernel\asr-v3-train.ipynb'
+import os
+out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'asr-v3-train.ipynb')
 with open(out_path, 'w', encoding='utf-8') as f:
     json.dump(nb, f, ensure_ascii=False, indent=1)
 
