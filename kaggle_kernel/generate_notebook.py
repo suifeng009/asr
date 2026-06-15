@@ -461,16 +461,24 @@ if not os.path.exists(model_pt_path):
 
 state = torch.load(model_pt_path, map_location="cpu", weights_only=True)
 state_dict = state.get("model_state_dict", state)
-embed = state_dict.get("embed.weight", None)
-is_reduced = embed is not None and embed.shape[0] < 100
-print(f"Embedding: {embed.shape if embed is not None else '?'} -> {'reduced' if is_reduced else 'full'}")
+is_reduced = False
+embed_shape = None
+for k, v in state_dict.items():
+    if "embed" in k and "weight" in k and hasattr(v, "shape") and len(v.shape) == 2:
+        if v.shape[0] < 100:
+            is_reduced = True
+            embed_shape = tuple(v.shape)
+            break
+        elif v.shape[0] > 10000:
+            embed_shape = tuple(v.shape)
+print(f"Embedding: {embed_shape if embed_shape is not None else '?'} -> {'reduced' if is_reduced else 'full'}")
 
 # 元数据
 metadata = {
     "vocab_size": "25055",
     "lfr_window_size": "7",
     "lfr_window_shift": "6",
-    "normalize_samples": "True",
+    "normalize_samples": "1",
     "with_itn": "14" if is_reduced else "25016",
     "without_itn": "15" if is_reduced else "25017",
     "lang_zh": "3" if is_reduced else "24884",
@@ -494,6 +502,20 @@ for key, val in metadata.items():
     prop.key = key
     prop.value = val
 print(f"Injected {len(metadata)} metadata props")
+
+# 补 sherpa-onnx 需要的元数据
+meta_patch = {
+    "lang_auto": str(is_reduced and "0" or "24883"),
+    "blank_id": "0",
+    "normalize_samples": "1",
+}
+for key, val in meta_patch.items():
+    exists = any(p.key == key for p in model.metadata_props)
+    if not exists:
+        prop = model.metadata_props.add()
+        prop.key = key
+        prop.value = val
+        print(f"Patched: {key} = {val}")
 
 final_path = "/kaggle/working/model_v3_deploy.onnx"
 onnx.save(model, final_path)
