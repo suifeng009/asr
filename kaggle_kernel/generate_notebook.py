@@ -61,8 +61,8 @@ def run(cmd):
     if r.returncode != 0 and r.stderr:
         print("WARN:", r.stderr.strip()[-200:])
 
-# 1) 卸载旧 torch
-run("pip uninstall -y torch torchvision torchaudio -q 2>/dev/null")
+# 1) 卸载旧 torch 及可能冲突的 onnxscript
+run("pip uninstall -y torch torchvision torchaudio onnxscript -q 2>/dev/null")
 
 # 2) 安装 cu118 版 PyTorch
 run("pip install torch==2.2.0+cu118 torchvision==0.17.0+cu118 torchaudio==2.2.0+cu118 "
@@ -75,7 +75,7 @@ run("pip install funasr==1.3.9 --no-deps -q")
 run("pip install soundfile librosa hydra-core kaldiio modelscope tensorboardX torch_complex -q")
 
 # 5) ONNX
-run("pip install onnx onnxruntime onnxscript -q")
+run("pip install onnx onnxruntime -q")
 
 # ⚠️ 不降级 numpy —— 保持 2.x
 

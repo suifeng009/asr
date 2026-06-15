@@ -23,25 +23,28 @@ for i, cell in enumerate(nb['cells']):
 # Now apply Hydra fixes to the training cell (cell 4)
 src = nb['cells'][4]['source']
 
-# Fix <unk> quoting
+# Fix <unk> quoting if present
 old_unk = "++tokenizer_conf.unk_symbol=<unk>"
 new_unk = "++tokenizer_conf.unk_symbol='<unk>'"
-src = src.replace(old_unk, new_unk)
+if old_unk in src:
+    src = src.replace(old_unk, new_unk)
 
-# Fix model name: ensure iic/ prefix and quoted
-src = src.replace("++model=SenseVoiceSmall", "++model='iic/SenseVoiceSmall'")
-src = src.replace("++model=iic/SenseVoiceSmall", "++model='iic/SenseVoiceSmall'")
-src = src.replace("++model=''iic/SenseVoiceSmall''", "++model='iic/SenseVoiceSmall'")
-src = src.replace("++model='iic/SenseVoiceSmall'", "++model='iic/SenseVoiceSmall'")
+# Fix model name: ensure iic/ prefix, and keep it valid syntax
+# We no longer force single quotes around model name inside the python string to avoid SyntaxError.
+# '++model=iic/SenseVoiceSmall' is already perfectly valid.
+src = src.replace("++model=SenseVoiceSmall", "++model=iic/SenseVoiceSmall")
+src = src.replace("++model='iic/SenseVoiceSmall'", "++model=iic/SenseVoiceSmall")
+src = src.replace("++model=''iic/SenseVoiceSmall''", "++model=iic/SenseVoiceSmall")
 
 nb['cells'][4]['source'] = src
 
 # Verify
-assert "++tokenizer_conf.unk_symbol='<unk>'" in src, "unk fix failed"
-assert "++model='iic/SenseVoiceSmall'" in src, "model fix failed"
+if old_unk in src or new_unk in src:
+    assert "++tokenizer_conf.unk_symbol='<unk>'" in src, "unk fix failed"
+assert "++model=iic/SenseVoiceSmall" in src, "model fix failed"
 print("\n--- Verification ---")
-print("unk_symbol quoted:", "++tokenizer_conf.unk_symbol='<unk>'" in src)
-print("model quoted:", "++model='iic/SenseVoiceSmall'" in src)
+print("unk_symbol quoted:", "++tokenizer_conf.unk_symbol='<unk>'" in src if (old_unk in src or new_unk in src) else "Not present")
+print("model setting:", "++model=iic/SenseVoiceSmall" in src)
 
 # Save with standard notebook indent (1 space)
 f = open(r'C:\asr\kaggle_kernel\asr-v3-train.ipynb', 'w', encoding='utf-8')
