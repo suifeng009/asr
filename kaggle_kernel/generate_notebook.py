@@ -311,7 +311,7 @@ print("开始训练...")
 print("="*60)
 
 with open('/kaggle/working/train.log', 'w') as log:
-    proc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, text=True, timeout=7200)
+    proc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, text=True)
 
 print(f"\nExit code: {proc.returncode}")
 
